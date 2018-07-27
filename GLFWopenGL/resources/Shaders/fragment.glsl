@@ -5,9 +5,9 @@
 // Also allows you to simulate simple real world materials.
 struct Material
 {
+	samplerCube depthMap;
 	sampler2D diffuse;
 	sampler2D specular;
-	sampler2D shadowMap;
 	float shininess;
 };
 
@@ -65,6 +65,9 @@ out vec4 FragColor;
 uniform DirLight dirLight;
 uniform PointLight pointLights[pointLightAmnt];
 uniform SpotLight spotLight;
+uniform float far_plane;
+uniform bool shadows;
+uniform vec3 lightPos;
 
 uniform Material material;
 uniform vec3 viewPos;
@@ -73,7 +76,7 @@ uniform vec3 viewPos;
 vec3 CalculateDirLight(DirLight light, vec3 normal, vec3 viewDir); 
 vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);  
 vec3 CalculateSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
-float CalculateShadows(vec4 fragPosLightSpace);
+float CalculateShadows(vec3 fragPos);
 
 void main()
 {
@@ -91,11 +94,9 @@ void main()
 	}
 	// Add spotlights
 	output += CalculateSpotLight(spotLight, norm, fs_in.FragPos, viewDir);
-
-	output += CalculateShadows(fs_in.FragPosLightSpace);
-
-
+	float shadow = shadows ? CalculateShadows(fs_in.FragPos) : 0.0;     
 	
+	//output += (1.0 - shadow); <------------- Removing this comment makes everything disappear.
     FragColor = vec4(output, 1.0);
 	
 
@@ -167,18 +168,21 @@ vec3 CalculateSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir
 }
 
 // Calculate the shadows.
-float CalculateShadows(vec4 fragPosLightSpace)
+float CalculateShadows(vec3 fragPos)
 {
-    // perform perspective divide
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    // transform to [0,1] range
-    projCoords = projCoords * 0.5 + 0.5;
-    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
-    float closestDepth = texture(material.shadowMap, projCoords.xy).r; 
-    // get depth of current fragment from light's perspective
-    float currentDepth = projCoords.z;
-    // check whether current frag pos is in shadow
-    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
-
+    // get vector between fragment position and light position
+    vec3 fragToLight = fragPos - lightPos;
+    // ise the fragment to light vector to sample from the depth map    
+    float closestDepth = texture(material.depthMap, fragToLight).r;
+    // it is currently in linear range between [0,1], let's re-transform it back to original depth value
+    closestDepth *= far_plane;
+    // now get current linear depth as the length between the fragment and light position
+    float currentDepth = length(fragToLight);
+    // test for shadows
+    float bias = 0.05; // we use a much larger bias since depth is now in [near_plane, far_plane] range
+    float shadow = currentDepth -  bias > closestDepth ? 1.0 : 0.0;        
+    // display closestDepth as debug (to visualize depth cubemap)
+    // FragColor = vec4(vec3(closestDepth / far_plane), 1.0);    
+        
     return shadow;
 }

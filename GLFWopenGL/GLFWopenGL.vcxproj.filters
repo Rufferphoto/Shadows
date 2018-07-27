@@ -18,10 +18,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="source\main.cpp">
+    <ClCompile Include="source\glad.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\glad.c">
+    <ClCompile Include="source\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -42,6 +42,9 @@
       <Filter>Resource Files\Shaders</Filter>
     </None>
     <None Include="resources\Shaders\fragment_Shadow.glsl">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
+    <None Include="resources\Shaders\geometry_Shadow.glsl">
       <Filter>Resource Files\Shaders</Filter>
     </None>
   </ItemGroup>

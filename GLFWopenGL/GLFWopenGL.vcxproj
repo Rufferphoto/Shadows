@@ -152,6 +152,7 @@
     <None Include="resources\Shaders\fragment.glsl" />
     <None Include="resources\Shaders\fragment_Lamp.glsl" />
     <None Include="resources\Shaders\fragment_Shadow.glsl" />
+    <None Include="resources\Shaders\geometry_Shadow.glsl" />
     <None Include="resources\Shaders\vertex_Shadow.glsl" />
     <None Include="resources\Shaders\vertex.glsl" />
     <None Include="resources\Shaders\vertex_Lamp.glsl" />

@@ -21,17 +21,22 @@ void mouseCallback(GLFWwindow* window, double a_xPos, double a_yPos);
 void scrollCallback(GLFWwindow* window, double xOffset, double yoffset);
 void processInput(GLFWwindow *window);
 void setLighting(const Shader &shader);
+void renderScene(const Shader &shader, Model &a_model);
+void renderPointLights(const Shader &shader);
 unsigned int loadTexture(const char *path);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+bool shadows = true;
+bool shadowsKeyPressed = false;
 
 // Window
 GLFWwindow* window;
+// Load in models.
 
 // Camera creation.
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 10.0f, 10.0f));
 
 // Mouse Position Variables.
 bool firstMouse = true;
@@ -112,15 +117,15 @@ float lastFrame = 0.0f; // Time of last frame.
 
 int main()
 {
+	std::cout << "Camera controlled by mouse, WASD to move around, Q and E move up and down. 1 & 2 turn torch on and off." << std::endl;
 	initialiseGLFW();
 	// ===== Build and compile the Vertex and Fragment shader program.
 	Shader lightShader("resources/Shaders/vertex.glsl", "resources/Shaders/fragment.glsl");
 	Shader lampShader("resources/Shaders/vertex_Lamp.glsl", "resources/Shaders/fragment_Lamp.glsl");
-	Shader simpleDepthShader("resources/Shaders/vertex_Shadow.glsl", "resources/Shaders/fragment_Shadow.glsl");
-	// ===== Load in models.
-	Model tankScene("resources/Models/ruinedtank/tank.obj");
-		
+	Shader simpleDepthShader("resources/Shaders/vertex_Shadow.glsl", "resources/Shaders/fragment_Shadow.glsl", "resources/Shaders/geometry_Shadow.glsl");
 
+	Model tankScene("resources/Models/ruinedtank/tank.obj");
+	
 	// ====================================================================================================================
 	// Vertex buffer object is first occurance of OpenGL object, it has a unique ID corresponding to that buffer,
 	// so we can generate one with a buffer ID using the glGenBuffers function.
@@ -156,6 +161,31 @@ int main()
 
 	// ====================================================================================================================
 
+
+	// 1. Setting up depth buffer object.
+	// --------------------------------------------------------------
+	const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+	unsigned int depthMapFBO;
+	glGenFramebuffers(1, &depthMapFBO);
+	// Creating a texture
+	unsigned int depthCubeMap;
+	glGenTextures(1, &depthCubeMap);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubeMap);
+	for (unsigned int i = 0; i < 6; ++i)
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	// attach depth texture as FBO's depth buffer
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthCubeMap, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	// --------------------------------------------------------------
+
 	// Texture maps for the containers.
 	unsigned int diffuseMap = loadTexture("resources/Textures/container2.png");
 	unsigned int specularMap = loadTexture("resources/Textures/container2specular.png");
@@ -165,28 +195,8 @@ int main()
 	lightShader.UseShader();
 	lightShader.setInt("material.diffuse", 0);
 	lightShader.setInt("material.specular", 1);
-
-	// Setting up depth buffer object.
-	const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
-	unsigned int depthMapFBO;
-	glGenFramebuffers(1, &depthMapFBO);
-	// Creating a texture
-	unsigned int depthMap;
-	glGenTextures(1, &depthMap);
-	glBindTexture(GL_TEXTURE_2D, depthMap);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// attach depth texture as FBO's depth buffer
-	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-	glm::vec3 lightPos(-2.0f, 4.0f, -1.0f);
+	lightShader.setInt("depthMap", 1);
+	glm::vec3 lightPos(0.0f, 0.0f, 0.0f);
 	
 	// Render Loop. (Keeps running until told to stop.)
 	while (!glfwWindowShouldClose(window))
@@ -199,87 +209,66 @@ int main()
 		// Input function call.
 		processInput(window);
 
+		// move light position over time
+		lightPos.z = sin(glfwGetTime() * 0.5) * 3.0;
+
 		// Rendering.
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
+		// 1. render depth of scene to texture (from light's perspective)
+		// --------------------------------------------------------------
 		glm::mat4 lightProjection, lightView;
 		glm::mat4 lightSpaceMatrix;
 		glm::mat4 view;
 		glm::mat4 projection;
-		glm::mat4 model;
+		
+		// 0. create depth cubemap transformation matrices
+		// -----------------------------------------------
+		float near_plane = 1.0f;
+		float far_plane = 25.0f;
+		glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f), (float)SHADOW_WIDTH / (float)SHADOW_HEIGHT, near_plane, far_plane);
+		std::vector<glm::mat4> shadowTransforms;
+		shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+		shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+		shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+		shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)));
+		shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+		shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
 
-		float near_plane = 1.0f, far_plane = 7.5f;
-		lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-		lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
-		lightSpaceMatrix = lightProjection * lightView;
-		// render scene from light's point of view
-		simpleDepthShader.UseShader();
-		simpleDepthShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
-
+		// 1. render scene to depth cubemap
+		// --------------------------------
 		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
 		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 		glClear(GL_DEPTH_BUFFER_BIT);
-
+		simpleDepthShader.UseShader();
+		for (unsigned int i = 0; i < 6; ++i)
+			simpleDepthShader.setMat4("shadowMatrices[" + std::to_string(i) + "]", shadowTransforms[i]);
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, diffuseMap);
-
-		// Bind specularMap
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, specularMap);
-		// Render cube.
+		simpleDepthShader.setFloat("far_plane", far_plane);
+		simpleDepthShader.setVec3("lightPos", lightPos);
+		// Render cubes and tank.
 		glBindVertexArray(cubeVAO);
-
-		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f)); // translate it down so it's at the center of the scene
-		//model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));	// it's a bit too big for our scene, so scale it down
-		lightShader.setMat4("model", model);
-		tankScene.Draw(lightShader);
-
-		for (unsigned int i = 0; i < 10; i++)
-		{
-			// calculate the model matrix for each object and pass it to shader before drawing
-			model = glm::mat4();
-			model = glm::translate(model, cubePositions[i]);
-			float angle = 20.0f * i;
-			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-			lightShader.setMat4("model", model);
-
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-		}
-
+		renderScene(lightShader, tankScene);
+		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		// =====================================================================
+		// --------------------------------------------------------------
 		
 		// reset viewport
 		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
+		// 2. render scene as normal using the generated depth/shadow map  
+		// --------------------------------------------------------------
+		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		// Setting up lighting
 		lightShader.UseShader();
 		setLighting(lightShader);
-		
-		// Turn torch on and off.
-		if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		{
-			printf("torch off");
-			lightShader.setFloat("spotLight.linear", 100);
-			torchOn = false;
-		}
-		if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		{
-			printf("torch on");
-			lightShader.setFloat("spotLight.linear", 0.09);
-			torchOn = true;
-		}
-
-		// Create transormations
 		// Pass projection matrix to shader
 		projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-		
 		// Look at matrix creates a view matrix that looks at a give target.
 		view = camera.GetViewMatrix();
-				
 		// Next create a view matrix, We need to move slightly backwards in the scene so that object becomes visible when in world space were located at the origin.
 		// To move around the scene i.e. to move the camera backwards is the same as moving the scene forwards.
 		lightShader.setMat4("projection", projection);
@@ -287,66 +276,32 @@ int main()
 		//lightShader.setVec3("light.direction", -0.2f, -1.0f, -0.3f);
 		//lightShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
 		lightShader.setVec3("viewPos", camera.Position);
+		lightShader.setInt("shadows", shadows); // enable/disable shadows by pressing 'SPACE'
 		lightShader.setVec3("lightPos", lightPos);
-		lightShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
-
-
-		// ================= Render the tank ================================
-		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f)); // translate it down so it's at the center of the scene
-		//model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));	// it's a bit too big for our scene, so scale it down
-		lightShader.setMat4("model", model);
-		tankScene.Draw(lightShader);
-		// =====================================================================
-
-		
-
-
-
-
-
-		// ============ Render the containers. ================================
+		lightShader.setFloat("far_plane", far_plane);
+		// Bind diffuseMap
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, diffuseMap);
 		// Bind specularMap
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, specularMap);
-
-		// Render cube.
 		glBindVertexArray(cubeVAO);
-		
-		for (unsigned int i = 0; i < 10; i++)
-		{
-			// calculate the model matrix for each object and pass it to shader before drawing
-			model = glm::mat4();
-			model = glm::translate(model, cubePositions[i]);
-			float angle = 20.0f * i;
-			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-			lightShader.setMat4("model", model);
-
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-		}
-		// =====================================================================
+		renderScene(lightShader, tankScene);
+		// --------------------------------------------------------------
 
 
 
-		// ============ Render the lamps for the light positions. =============
+		// 3. Render the lamps for the light positions. 
+		// --------------------------------------------------------------
 		lampShader.UseShader();
 		lampShader.setMat4("projection", projection);
 		lampShader.setMat4("view", view);
 		// Calculate the model matrix for each object and pass it to shader before draw call.
 		glBindVertexArray(lightVAO);
+		renderPointLights(lampShader);
+		
+		// --------------------------------------------------------------
 
-		for (unsigned int i = 0; i < 4; i++)
-		{
-			model = glm::mat4();
-			model = glm::translate(model, pointLightPositions[i]);
-			model = glm::scale(model, glm::vec3(0.2f));
-			lampShader.setMat4("model", model);
-			// Render lamp.
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-		}
-		// =====================================================================
 		
 		
 
@@ -478,6 +433,56 @@ void setLighting(const Shader &shader)
 	shader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
 	// Set cube material properties.
 	shader.setFloat("material.shininess", 32.0f);
+
+	// Turn torch on and off.
+	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+	{
+		printf("torch off");
+		shader.setFloat("spotLight.linear", 100);
+		torchOn = false;
+	}
+	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+	{
+		printf("torch on");
+		shader.setFloat("spotLight.linear", 0.09);
+		torchOn = true;
+	}
+}
+
+void renderScene(const Shader &shader, Model &a_model)
+{
+	glm::mat4 model;
+	// Draw containers.
+
+	for (unsigned int i = 0; i < 10; i++)
+	{
+		// calculate the model matrix for each object and pass it to shader before drawing
+		model = glm::mat4();
+		model = glm::translate(model, cubePositions[i]);
+		float angle = 20.0f * i;
+		model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+		shader.setMat4("model", model);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+	}
+	model = glm::mat4();
+	model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f)); // translate it down so it's at the center of the scene
+	//model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));	// it's a bit too big for our scene, so scale it down
+	shader.setMat4("model", model);
+	a_model.Draw(shader);
+}
+
+void renderPointLights(const Shader &shader)
+{
+	glm::mat4 model;
+	for (unsigned int i = 0; i < 4; i++)
+	{
+		model = glm::mat4();
+		model = glm::translate(model, pointLightPositions[i]);
+		model = glm::scale(model, glm::vec3(0.2f));
+		shader.setMat4("model", model);
+		// Render lamp.
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+	}
 }
 
 // Function for when the user resizes the window it adjusts the viewport.
@@ -535,7 +540,15 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 
-	
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !shadowsKeyPressed)
+	{
+		shadows = !shadows;
+		shadowsKeyPressed = true;
+	}
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE)
+	{
+		shadowsKeyPressed = false;
+	}
 }
 
 // utility function for loading a 2D texture from file
@@ -576,6 +589,3 @@ unsigned int loadTexture(char const * path)
 
 	return textureID;
 }
-
-
-
