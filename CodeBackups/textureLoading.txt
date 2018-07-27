@@ -1,0 +1,71 @@
+glm::vec3 cubePositions[] = {
+		glm::vec3(0.0f,  0.0f,  0.0f),
+		glm::vec3(2.0f,  5.0f, -15.0f),
+		glm::vec3(-1.5f, -2.2f, -2.5f),
+		glm::vec3(-3.8f, -2.0f, -12.3f),
+		glm::vec3(2.4f, -0.4f, -3.5f),
+		glm::vec3(-1.7f,  3.0f, -7.5f),
+		glm::vec3(1.3f, -2.0f, -2.5f),
+		glm::vec3(1.5f,  2.0f, -2.5f),
+		glm::vec3(1.5f,  0.2f, -1.5f),
+		glm::vec3(-1.3f,  1.0f, -1.5f)
+	};
+
+
+
+
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	// texture coord attribute
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+	
+	// ===== Loading and creating a texture. =====
+	unsigned int texture1, texture2;
+	
+	glGenTextures(1, &texture1);	// Takes in how many textures to generate and stores it in an unsigned int called texture.
+	glBindTexture(GL_TEXTURE_2D, texture1); // Binding it to the unsigned int texture so we can use it in furture commands.
+	glActiveTexture(GL_TEXTURE0); // Activate the texture unit first before binding texture.
+	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	int width, height, nrChannels;
+	unsigned char *data = stbi_load("resources/Textures/wall.jpg", &width, &height, &nrChannels, 0);
+	// Texture Generation
+	// set the texture wrapping/filtering options (on the currently bound texture object)
+
+	if (data)
+	{
+		// 1st Texture target, setting this to same as currently bound will generate to this, 2nd specifies mimap level. 3rd What kind of format to store the texture, this has RGB values only, so set to RGB.
+		// Fourth and Fifth are self explanitory. 6th argument should always be 0. 7th and 8th specify the format and datatype of the source image. Loaded with RGB values and stored them as chars (bytes).
+		// Last argument is actual image data.
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D); // Generate the texture mipmaps for use on fragments that are far away from view.
+	}
+	else
+	{
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	// Free up memory 
+	stbi_image_free(data);
+
+	// ====== 2nd Texture generation.
+	glGenTextures(1, &texture2);
+	glBindTexture(GL_TEXTURE_2D, texture2);
+	data = stbi_load("resources/Textures/awesomeface.png", &width, &height, &nrChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+
+	// Free up memory 
+	stbi_image_free(data);
+
+	// Tell openGL which texture unit each shader sampler belongs to by setting each sampler.
+	myShader.UseShader();
+	myShader.setInt("texture1", 0);
+	myShader.setInt("texture2", 1);

@@ -1,0 +1,59 @@
+GLuint vertexShader;
+	// Provide the type of shader to create as an argument to glCreateShader.
+	vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	unsigned char* vertexSource = fileToBuffer("resources/Shaders/vertex.glsl");
+	// Attach shader's source code to the shader obj and compile.
+	glShaderSource(vertexShader, 1, (const char**)&vertexSource, 0);
+	glCompileShader(vertexShader);
+
+	// ====== Checking if compilation was successful.
+	int success;
+	char infoLog[512];
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+	// If error
+	if (!success)
+	{
+		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::VERTEX::COMPILATION::FAILED\n" << infoLog << std::endl;
+	}
+
+	// ====== Build and compile the Fragment shader program.
+	GLuint fragmentShader;
+	// Provide the type of shader to create as an argument to glCreateShader.
+	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	unsigned char* fragmentSource = fileToBuffer("resources/Shaders/fragment.glsl");
+	// Attach shader's source code to the shader obj and compile.
+	glShaderSource(fragmentShader, 1, (const char**)&fragmentSource, 0);
+	glCompileShader(fragmentShader);
+
+	// ====== Checking if the compilation was successful.
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION::FAILED\n" << infoLog << std::endl;
+	}
+
+	// Both shaders should now be compiled at this point.
+	
+	// A shader program is the final linked version of multiple shaders combined.
+
+	// ====== Shader linking.
+	unsigned int shaderProgram;
+	// Creating a program and returns the ID reference to the newly created program object, in this case "shaderProgram".
+	shaderProgram = glCreateProgram();
+	// Attach the previously compiled shaders to the program object and link them with glLinkProgram.
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+	glLinkProgram(shaderProgram);
+
+	// ====== Checking if the linking was successful.
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+	if (!success)
+	{
+		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::PROGRAM::LINK::FAILED\n" << infoLog << std::endl;
+	}
+	// Shaders are no longer needed once linked.
+	glDeleteShader(vertexShader);
+	glDeleteShader(fragmentShader);

@@ -1,0 +1,23 @@
+﻿  main.cpp
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\include\shader.h(52): warning C4101: 'infoLog': unreferenced local variable
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\include\shader.h(51): warning C4101: 'success': unreferenced local variable
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(195): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(272): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(442): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(443): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(450): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(451): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(458): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(459): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(466): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(467): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(476): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(495): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(496): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(502): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(503): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(505): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(506): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\ruffer-desktop\desktop\ct6025-reassessment\glfwopengl\source\main.cpp(513): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+  GLFWopenGL.vcxproj -> C:\Users\Ruffer-Desktop\Desktop\CT6025-Reassessment\Debug\GLFWopenGL.exe
+  GLFWopenGL.vcxproj -> C:\Users\Ruffer-Desktop\Desktop\CT6025-Reassessment\Debug\GLFWopenGL.pdb (Full PDB)
